@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <base href="http://demos.telerik.com/kendo-ui/grid/local-data-binding">
+    <style>html { font-size: 14px; font-family: Arial, Helvetica, sans-serif; }</style>
+    <title></title>
+    <link rel="stylesheet" href="//kendo.cdn.telerik.com/2016.1.112/styles/kendo.common-material.min.css" />
+    <link rel="stylesheet" href="//kendo.cdn.telerik.com/2016.1.112/styles/kendo.material.min.css" />
+
+    <script src="//kendo.cdn.telerik.com/2016.1.112/js/jquery.min.js"></script>
+    <script src="//kendo.cdn.telerik.com/2016.1.112/js/kendo.all.min.js"></script>
+</head>
+<body>
+
+        <div id="playlist">
+            <div id="grid"></div>
+            <div id="duration" style="float:right;padding:10px"></div>
+
+            <script>
+
+                /*get the path of the index.html file on the harddisk, 
+                so that we can use same path to make get call to Album.txt file */
+                var filepatharr = window.location.pathname.split("/");
+                filepatharr.pop();
+                var albumfilepath = "file://" + filepatharr.join("/") + "/Albums.txt";
+                /*make a jquery get call to get entire contexts of the file*/
+                $.get( albumfilepath, function(filecontent ){
+                    var albums = [];
+                    //allsongs array will contain all the songs from Album.txt file
+                    var allsongs = [];
+
+                    //Split the file to get albums
+                    albums = filecontent.trim().split("\n\n");
+
+                    for(var strablum in albums){
+                        //Split the album to get songs and the album header
+                        var album = albums[strablum].split("\n");
+                        var strsongheader = album.shift();
+                        //Split album header to extract Artist, Album and Year  
+                        var songheader = strsongheader.split(" / ");
+                        for(var songindex in album){
+                            //Split the album[songindex] element to get title and duration
+                            var song_arr = album[songindex].split(" - ");
+                            var song = {};
+                            song.artist = songheader[0];
+                            song.album = songheader[1];
+                            song.year = songheader[2];
+                            song.title = song_arr[0];
+                            song.duration = song_arr[1];
+                            var splitduration = song.duration.split(":");
+                            //Create durationinseconds field for song so that we can perform arithmatic operations that are based on duration 
+                            song.durationinseconds = parseInt(splitduration[0])*60 + parseInt(splitduration[1]);
+                            allsongs.push(song);
+                        }
+                    }
+
+                    //Sort the allsongs array in order of shortest to longest duration
+                    allsongs.sort(function(a,b){
+                        if (a.durationinseconds > b.durationinseconds){
+                            return 1;
+                        }
+                        else
+                        {
+                            return -1;
+                        }
+                        // if a.durationinseconds == b.durationinseconds
+                        return 0;
+                    });
+
+                    // function to calculate the median value of duration
+                    function get_median_duration(arr){
+                        if (arr.length%2 == 0){
+                            return (arr[arr.length/2].durationinseconds + arr[(arr.length/2) + 1].durationinseconds)/2;
+                        }
+                        else
+                        {
+                            return arr[(arr.length+1)/2].durationinseconds;
+                        }
+
+                    }
+
+                    var median_song_duration = get_median_duration(allsongs);
+
+                    // Filter the songs that are greater than median song duration
+                    var playlist =  allsongs.filter(function(item){
+                        return item.durationinseconds <= median_song_duration;                        
+                    });
+
+                    var playlist_duration_seconds =  playlist.reduce(function(previousValue, current_item){
+                        if (typeof previousValue == "number"){
+                            return previousValue + current_item.durationinseconds;
+                        }
+                        else{
+                            return previousValue.durationinseconds + current_item.durationinseconds;
+                        }
+                    });
+
+                    var playlist_duration =  Math.floor(playlist_duration_seconds/60) + ":" + playlist_duration_seconds%60;
+
+
+                    console.log("Median Durtaion: " + median_song_duration);
+                    console.log("Playlist Duration: " + playlist_duration);               
+
+                    //render the playlist array in a grid to present in a tabular form
+                    $("#grid").kendoGrid({dataSource: playlist});
+                    //display the duration of the playlist in a div
+                    $("#duration").html("<b>" + "Total Playlist Duration: " + playlist_duration + "</b>");
+                });
+
+
+                $(document).ready(function() {
+                    $("#grid").kendoGrid({
+                        dataSource: {
+                            data: [],
+                            schema: {
+                                model: {
+                                    fields: {
+                                        artist: { type: "string" },
+                                        album: { type: "string" },
+                                        year: { type: "string" },
+                                        title: { type: "string" },
+                                        duration: { type: "string" },
+                                        durationinseconds: { type: "number" }
+                                    }
+                                }
+                            }
+                        },
+                        height: 800,
+                        pageable: false,
+                        resizable: true,
+                        columns: [
+                            { field: "artist", title: "Artist" },
+                            { field: "album", title: "Album" },
+                            { field: "year", title: "Year" },
+                            { field: "title", title: "Song Title"},
+                            { field: "duration", title: "Duration"},
+                            { field: "durationinseconds", title: "Duration In Seconds" }
+                        ]
+                    });
+                });
+           
+
+            </script>
+</div>
+
+
+</body>
+</html>
